@@ -19,6 +19,8 @@ class DataWrapper():
       self.array = data.numpy().copy()
     else:
       raise ValueError(f'data must be a `torch.Tensor` or `numpy.ndarray`, but got {type(data)}')
+    
+    self.array = self.array.astype(np.float32)
 
   @classmethod
   def from_file(cls, path: str):

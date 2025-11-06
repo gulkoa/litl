@@ -42,21 +42,32 @@ def get_compressor(name: str) -> Compressor:
         # if the compressor is not in the entry points, try to load it from a file
         try:
             path, classname = name.rsplit(':', 1)
-            absolute_path = os.path.abspath(os.path.expanduser(path))
+
+            sys.path.append(os.getcwd())
+
+        #     absolute_path = os.path.abspath(os.path.expanduser(path))
             
-            if not os.path.exists(absolute_path):
-                raise ValueError(f"Compressor script file at path {path} does not exist")
+        #     if not os.path.exists(absolute_path):
+        #         raise ValueError(f"Compressor script file at path {path} does not exist")
             
-            dirname = os.path.dirname(absolute_path)
-            if dirname not in sys.path:
-                sys.path.insert(0, dirname)
+        #     dirname = os.path.dirname(absolute_path)
+        #     if dirname not in sys.path:
+        #         sys.path.insert(0, dirname)
                 
-            spec = importlib.util.spec_from_file_location(path, absolute_path)
-            mod  = importlib.util.module_from_spec(spec)
-            spec.loader.exec_module(mod)
-        except ValueError as e:
-          raise ImportError(f"Failed to load compressor script file at path {path}, possibly it doesn't exist") from e
+        #     spec = importlib.util.spec_from_file_location(path, absolute_path)
+        #     mod  = importlib.util.module_from_spec(spec)
+        #     spec.loader.exec_module(mod)
+        # except ValueError as e:
+        #   raise ImportError(f"Failed to load compressor script file at path {path}, possibly it doesn't exist") from e
           
+
+            # import using module path (e.g., python -m package.module)
+            mod = importlib.import_module(path)
+        except Exception as e:
+            raise e
+            # raise ImportError(f"Failed to import compressor module '{path}'. Ensure it's importable (on PYTHONPATH) and spelled correctly: {e}") from e
+          
+
         try:
           cls = getattr(mod, classname)
         except AttributeError:

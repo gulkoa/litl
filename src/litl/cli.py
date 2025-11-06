@@ -43,12 +43,25 @@ def parse_args():
 
     return parser.parse_args()
 
+# ascii_art = \
+# """
+# ┓• ┓
+# ┃┓╋┃
+# ┗┗┗┗
+# """.strip()
 ascii_art = \
+"""                                       
+  █                    █                  
+▄▄█                    █▄▄                
+   ██    ██ █████ ██                      
+   ██       ██    ██                      
+   ██    ██ ██    ██                      
+   ██    ██ ██    ██                      
+   ██    ██ ██    ██                      
+   █████ ██ ██    █████                   
+▀▀█                    █▀▀                
+  █                    █                                                                   
 """
-┓• ┓
-┃┓╋┃
-┗┗┗┗
-""".strip()
 
 def main():
     console = Console()

@@ -4,6 +4,19 @@
 
 A flexible Python framework for implementing, testing, and deploying lossy compression algorithms.
 
+```
+  █                    █                  
+▄▄█                    █▄▄                
+   ██    ██ █████ ██                      
+   ██       ██    ██                      
+   ██    ██ ██    ██                      
+   ██    ██ ██    ██                      
+   ██    ██ ██    ██                      
+   █████ ██ ██    █████                   
+▀▀█                    █▀▀                
+  █                    █             
+```
+
 ## Features
 
 - 🔧 **Simple Compressors Interface**: Simple and universal interface for implementing and sharing compressors
