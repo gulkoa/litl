@@ -4,4 +4,9 @@ __pycache__/
 */*cache__ 
 *.litl
 *.pyc
-examples/
+*.egg-info/
+.venv/
+
+# local experiments and data live in examples/, only the example compressor is tracked
+examples/*
+!examples/quantize.py
