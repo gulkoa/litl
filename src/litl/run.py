@@ -1,6 +1,6 @@
-import argparse
+import importlib.metadata
+import importlib.util
 import os
-from functools import partial
 import sys
 import time
 
@@ -13,8 +13,6 @@ from .blobs import Blob
 from .evaluator import Evaluator
 from .dot_litl import DotLitl
 
-import importlib
-
 def _discover_compressors():
     """
     Discover all compressors in the entry points
@@ -24,51 +22,54 @@ def _discover_compressors():
         for ep in importlib.metadata.entry_points(group="litl.compressors")
     }
 
-global _AVAILABLE_COMPRESSORS
 _AVAILABLE_COMPRESSORS = None
 
-def get_compressor(name: str) -> Compressor:
+def get_compressor(name: str) -> type[Compressor]:
     """
-    Get a compressor by name
+    Get a compressor class by name
+
+    Args:
+        name (str): Either the name of an installed compressor (registered in the "litl.compressors" entry point group),
+            or a path to a python file and a class name in the format 'path/to/file.py:CompressorClassName'
     """
     global _AVAILABLE_COMPRESSORS
-    if not _AVAILABLE_COMPRESSORS:
+    if _AVAILABLE_COMPRESSORS is None:
         _AVAILABLE_COMPRESSORS = _discover_compressors()
 
     if name in _AVAILABLE_COMPRESSORS:
         # if the compressor is in the entry points, return it
         return _AVAILABLE_COMPRESSORS[name]
-    elif ":" in name:
-        # if the compressor is not in the entry points, try to load it from a file
-        try:
-            path, classname = name.rsplit(':', 1)
-            absolute_path = os.path.abspath(os.path.expanduser(path))
-            
-            if not os.path.exists(absolute_path):
-                raise ValueError(f"Compressor script file at path {path} does not exist")
-            
-            dirname = os.path.dirname(absolute_path)
-            if dirname not in sys.path:
-                sys.path.insert(0, dirname)
-                
-            spec = importlib.util.spec_from_file_location(path, absolute_path)
-            mod  = importlib.util.module_from_spec(spec)
-            spec.loader.exec_module(mod)
-        except ValueError as e:
-          raise ImportError(f"Failed to load compressor script file at path {path}, possibly it doesn't exist") from e
-          
-        try:
-          cls = getattr(mod, classname)
-        except AttributeError:
-            raise ValueError(f"Compressor {name} does not have class {classname}")
-        
-        if not issubclass(cls, Compressor):
-            raise ValueError(f"Compressor {name} is not a subclass of Compressor")
-        return cls
-    
-    else:
-        raise ValueError(f"Compressor {name} not found in entry points. Available compressors in pip: {list(_AVAILABLE_COMPRESSORS.keys())} or please provide a path to a compressor file in the format 'path/to/file.py:CompressorClassName'")
-        
+
+    if ":" not in name:
+        raise ValueError(f"Compressor {name} not found in entry points. Installed compressors: {sorted(_AVAILABLE_COMPRESSORS.keys())}. To use a compressor from a file, please provide its path in the format 'path/to/file.py:CompressorClassName'")
+
+    # if the compressor is not in the entry points, load it from a file
+    path, classname = name.rsplit(':', 1)
+    absolute_path = os.path.abspath(os.path.expanduser(path))
+
+    if not os.path.isfile(absolute_path):
+        raise ImportError(f"Failed to load compressor {name}: script file at path {path} does not exist")
+
+    dirname = os.path.dirname(absolute_path)
+    if dirname not in sys.path:
+        sys.path.insert(0, dirname)
+
+    spec = importlib.util.spec_from_file_location(path, absolute_path)
+    if spec is None or spec.loader is None:
+        raise ImportError(f"Failed to load compressor {name}: file at path {path} is not a python script")
+    mod = importlib.util.module_from_spec(spec)
+    # errors raised by the script itself are not caught here, so that their traceback points at the script
+    spec.loader.exec_module(mod)
+
+    try:
+        cls = getattr(mod, classname)
+    except AttributeError:
+        raise ValueError(f"Compressor {name} does not have class {classname}")
+
+    if not isinstance(cls, type) or not issubclass(cls, Compressor):
+        raise ValueError(f"Compressor {name} is not a subclass of Compressor")
+    return cls
+
 
 def compress(compressor_name: str, data_path: str, config: dict, litl_file_path: str=None) -> tuple[Blob, dict, dict]:
     """
@@ -124,7 +125,7 @@ def decompress(compressor_name=None, original_data_path: str=None, compressed_by
         compressed_bytes (bytes): The compressed data bytes
         meta (dict): Metadata for the compressed data
         
-        litl_file_path (str): Provide instead of compressor_name, original_data_bytes, and meta to read everything the compressed data from a .litl file
+        litl_file_path (str): Provide instead of compressor_name, compressed_bytes, and meta to read the compressed data, compressor name, and metadata from a .litl file
         
         decompressed_path (str, optional): If provided, save the decompressed data to this path
         
@@ -195,7 +196,8 @@ def evaluate(compressor_name: str, data_path: str, config, decompressed_path: st
     # optimize cuda
     torch.set_float32_matmul_precision("medium")
 
-    compressor = get_compressor(compressor_name)
+    # fail early if the compressor cannot be loaded
+    get_compressor(compressor_name)
 
     metrics = {}
 

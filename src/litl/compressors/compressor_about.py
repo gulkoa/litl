@@ -1,3 +1,5 @@
+from typing import Optional
+
 import pydantic
 
 class CompressorAbout(pydantic.BaseModel):
@@ -7,6 +9,6 @@ class CompressorAbout(pydantic.BaseModel):
   name: str
   description: str
   version: str
-  author: str = None
-  license: str = None
-  url: str = None
+  author: Optional[str] = None
+  license: Optional[str] = None
+  url: Optional[str] = None

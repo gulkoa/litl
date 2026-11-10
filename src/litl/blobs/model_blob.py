@@ -1,7 +1,8 @@
-import os
-import torch
-from . import Blob
 import io
+
+import torch
+
+from . import Blob
 
 class ModelBlob(Blob):
   def __init__(self, model: torch.nn.Module) -> None:

@@ -1,5 +1,3 @@
-# __package__ = "litl.compressors"
-
 from ..datawrapper import DataWrapper
 from ..blobs import Blob
 from .compressor_about import CompressorAbout
@@ -38,10 +36,11 @@ class Compressor():
 
     Args:
       data (DataWrapper): The data to be compressed
-      config (pydantic.BaseModel): The configuration for the compressor
+      config (dict): The configuration for the compressor
 
     Returns:
-      tuple[Blob, pydantic.BaseModel]: A tuple containing the compressed data in a Blob object and the configuration used for compression
+      tuple[Blob, dict]: A tuple containing the compressed data in a Blob object and the metadata required to decompress it. \
+      The metadata is saved in the .litl file as JSON, so it must be JSON-serializable
     """
     raise NotImplementedError()
 
@@ -52,7 +51,7 @@ class Compressor():
 
     Args:
       data (Blob): The compressed data to be decompressed, guaranteed to be the same type as the one returned by compress
-      meta (dict): The metadata associated with the compressed data, guaranteed to be the same as the one used during compression
+      meta (dict): The metadata associated with the compressed data, guaranteed to be the same as the one returned by compress
 
     Returns:
       DataWrapper: The decompressed data

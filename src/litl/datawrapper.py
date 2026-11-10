@@ -1,8 +1,7 @@
-# __package__ = "litl.datawrapper"
+import os
 
 import numpy as np
 import torch
-import os
 
 class DataWrapper():
   """
@@ -16,51 +15,84 @@ class DataWrapper():
     if isinstance(data, np.ndarray):
       self.array = data.copy()
     elif isinstance(data, torch.Tensor):
-      self.array = data.numpy().copy()
+      # detach and move to cpu first, so tensors on a GPU or tracked by autograd are accepted too
+      self.array = data.detach().cpu().numpy().copy()
     else:
       raise ValueError(f'data must be a `torch.Tensor` or `numpy.ndarray`, but got {type(data)}')
 
   @classmethod
   def from_file(cls, path: str):
     """
-    Create a new `DataWrapper` instance from a file. The file format can be either .npy, .np, or .pt
+    Create a new `DataWrapper` instance from a file. The file format can be .npy, .np, .pt, or .nc
 
     Args:
       path (str): The path to the file to load data from
-      
+
     """
-    extension = os.path.splitext(path)[-1][1:]
+    extension = os.path.splitext(path)[-1][1:].lower()
     if extension == 'npy' or extension == 'np':
       array = np.load(path, allow_pickle=False)
       return cls(array)
     elif extension == 'pt':
       array = torch.load(path, weights_only=False)
       return cls(array)
+    elif extension == 'nc':
+      return cls.from_netcdf(path)
     else:
       raise ValueError(f'Unsupported file format to load from: .{extension}')
 
+  @classmethod
+  def from_netcdf(cls, path: str, variable: str=None):
+    """
+    Create a new `DataWrapper` instance from a NetCDF file.
+
+    This function requires netCDF4, which is an optional dependency. Please install it with `pip install litl[netcdf]`
+
+    Args:
+      path (str): The path to the NetCDF file to load data from
+
+      variable (str, optional): The name of the variable to load. If not provided, the variable named `data` is used \
+      (this is what `save_netcdf` writes), or the first variable in the file if there is no `data` variable.
+    """
+    Dataset = _import_netcdf_dataset()
+
+    with Dataset(path, 'r') as nc:
+      if variable is None:
+        if len(nc.variables) == 0:
+          raise ValueError(f'NetCDF file {path} does not contain any variables')
+        variable = 'data' if 'data' in nc.variables else next(iter(nc.variables))
+      elif variable not in nc.variables:
+        raise ValueError(f'NetCDF file {path} does not have a variable named "{variable}". Available variables: {list(nc.variables.keys())}')
+
+      # netCDF4 returns a masked array when the variable has missing values, keep the raw values
+      array = np.ma.getdata(nc.variables[variable][...])
+
+    return cls(np.asarray(array))
+
   def save_to_file(self, path: str):
     """
-    Save the data to a file. The file format can be either .npy, .np, or .pt
+    Save the data to a file. The file format can be .npy, .np, .pt, or .nc
 
     Args:
       path (str): The path to the file to save data to
     """
-    extension = os.path.splitext(path)[-1][1:]
+    extension = os.path.splitext(path)[-1][1:].lower()
     if extension == 'npy' or extension == 'np':
-      np.save(path, self.array, allow_pickle=False)
+      # write through a file object: np.save would otherwise append ".npy" to a ".np" path
+      with open(path, 'wb') as f:
+        np.save(f, self.array, allow_pickle=False)
     elif extension == 'pt':
       torch.save(self.tensor(), path, _use_new_zipfile_serialization=False)
     elif extension == 'nc':
       self.save_netcdf(path)
     else:
       raise ValueError(f'Unsupported file format to save as: ".{extension}"')
-    
+
   def save_netcdf(self, path: str, dimnames: list[str]=None):
     """
-    Save the data to a NetCDF file.
+    Save the data to a NetCDF file, as a variable named `data`.
 
-    This function requires netCDF4, which is an optional dependency. Please install it with `pip install netCDF4`
+    This function requires netCDF4, which is an optional dependency. Please install it with `pip install litl[netcdf]`
 
     Args:
       path (str): The path to the NetCDF file to save data to
@@ -70,11 +102,7 @@ class DataWrapper():
       Note, that if you provide more names than dimensions, the first `len(dimnames) - len(self.array.shape)` names will be ignored.
 
     """
-    # import netCDF4 only if needed
-    try:
-      from netCDF4 import Dataset
-    except ImportError:
-      raise ImportError('This function requires netCDF4, which is an optional dependency. Please install it with `pip install netCDF4`')
+    Dataset = _import_netcdf_dataset()
 
     # come up with dimnames
     default_dimnames = ['t', 'z', 'y', 'x']
@@ -84,16 +112,16 @@ class DataWrapper():
       dimnames = default_dimnames
     elif len(dimnames) < len(self.array.shape):
       raise ValueError(f'Dataset has {len(self.array.shape)} dimensions, but only {len(dimnames)} names were provided through `dimnames` argument')
-      
+
     lendiff = len(dimnames) - len(self.array.shape)
+    used_dimnames = tuple(dimnames[lendiff:])
     with Dataset(path, 'w', format='NETCDF4') as nc:
       # create dimensions
-      for i, dim in enumerate(self.array.shape):
-        name = dimnames[lendiff + i]
+      for name, dim in zip(used_dimnames, self.array.shape):
         nc.createDimension(name, dim)
 
-      var = nc.createVariable('data', self.array.dtype, ('dim',))
-      var[:] = self.array.flatten()
+      var = nc.createVariable('data', self.array.dtype, used_dimnames)
+      var[...] = self.array
 
       var.units = 'unknown'
       var.description = 'Data saved by LITL'
@@ -106,11 +134,20 @@ class DataWrapper():
 
   def numpy(self) -> np.ndarray:
     return self.array
-  
+
   def dim(self) -> int:
     return len(self.array.shape)
-  
+
   def shape(self) -> tuple:
     return self.array.shape
 
-  
+
+def _import_netcdf_dataset():
+  """
+  Import netCDF4 only when it is needed, since it is an optional dependency
+  """
+  try:
+    from netCDF4 import Dataset
+  except ImportError:
+    raise ImportError('This function requires netCDF4, which is an optional dependency. Please install it with `pip install litl[netcdf]`')
+  return Dataset

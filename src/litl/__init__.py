@@ -1,9 +1,6 @@
-import importlib
-import os
-
 from .datawrapper import DataWrapper
 from .evaluator import Evaluator
-from .run import compress, decompress
+from .run import compress, decompress, evaluate
 from .dot_litl import DotLitl
 
 __all__ = [
@@ -11,5 +8,6 @@ __all__ = [
     "Evaluator",
     "compress",
     "decompress",
+    "evaluate",
     "DotLitl",
 ]

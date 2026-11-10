@@ -1,4 +1,3 @@
-import os
 from . import Blob
 
 class BytesBlob(Blob):
