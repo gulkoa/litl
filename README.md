@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="https://raw.githubusercontent.com/GulkoA/litl/main/assets/logo.svg" alt="litl logo" width="128">
+</p>
+
 # litl 🗜️
 
 [![PyPI](https://img.shields.io/pypi/v/litl)](https://pypi.org/project/litl/)
