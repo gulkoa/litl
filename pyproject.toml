@@ -31,9 +31,15 @@ dependencies = [
 netcdf = [
     "netcdf4",
 ]
+test = [
+    "pytest",
+]
 
 [project.urls]
 Homepage = "https://github.com/GulkoA/litl"
 
 [project.scripts]
 litl = "litl.cli:main"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
