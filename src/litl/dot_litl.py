@@ -1,11 +1,12 @@
-import os, struct
-import zstd
-import io
-from importlib import metadata as importlib_metadata
-import pydantic
 import hashlib
 import json
+import os
+import struct
 import warnings
+from importlib import metadata as importlib_metadata
+
+import pydantic
+import zstd
 
 class LitlMeta(pydantic.BaseModel):
     litl_version: str
@@ -62,7 +63,7 @@ class DotLitl:
     @classmethod
     def make_meta(cls, meta: dict, compressor_id: str, compressor_version: str) -> str:
         """
-        Create a metadata dictionary
+        Create the serialized metadata string that is stored in the .litl file
         """
         litl_version = importlib_metadata.version("litl")
         
@@ -135,15 +136,21 @@ class DotLitl:
                 if magic != b"LITL":
                     raise ValueError("Invalid file format")
 
-                version = struct.unpack("<B", f.read(1))[0]
-                checksum = struct.unpack("<I", f.read(4))[0]
+                # version (1 byte), checksum (4 bytes), length of meta (4 bytes)
+                header = f.read(9)
+                if len(header) != 9:
+                    raise ValueError("Invalid file format: file is truncated")
+
+                version = struct.unpack("<B", header[0:1])[0]
+                checksum = struct.unpack("<I", header[1:5])[0]
 
                 if version != cls.version:
                     raise ValueError(f"Unsupported version: {version}")
                 
-                meta_length = struct.unpack("<I", f.read(4))[0]
-                # print("Meta length:", meta_length)
+                meta_length = struct.unpack("<I", header[5:9])[0]
                 meta_bytes = f.read(meta_length)
+                if len(meta_bytes) != meta_length:
+                    raise ValueError("Invalid file format: file is truncated")
                 blob_bytes = f.read()
 
             # checksum validation

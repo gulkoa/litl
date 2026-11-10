@@ -7,12 +7,12 @@ class Blob():
 
   def __init__(self, *args, **kwargs) -> None:
     """
-    Initialize an empty blob. Please use set_data to set the data
+    Initialize a blob with the compressed data
     """
     raise NotImplementedError()
 
   @classmethod
-  def from_bytes(cls, data: bytes) -> None:
+  def from_bytes(cls, data: bytes) -> 'Blob':
     """
     Create a new blob instance from bytes
     """
