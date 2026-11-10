@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-labelledby="title">
+  <title id="title">litl</title>
+  <!-- the word "litl" drawn like the banner the CLI prints out of box-drawing characters -->
+  <rect width="512" height="512" rx="112" fill="#0d1117"/>
+  <g transform="translate(96 76) scale(2.5)">
+    <g fill="none" stroke="#7ee787" stroke-width="11">
+      <path d="M2,24 H16 V120 H30"/>
+      <path d="M34,72 H48 V120 H62"/>
+      <path d="M80,50 V120 H94 M66,72 H94"/>
+      <path d="M98,24 H112 V120 H126"/>
+    </g>
+    <circle cx="48" cy="26" r="7.5" fill="#79c0ff"/>
+  </g>
+</svg>
